@@ -10,7 +10,7 @@ Before running the installation commands make sure to allow inbound connections 
 
 ```sh
 export CODE_DOMAIN_NAME=vscode.example.com
-curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --core
+curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
 ```
 
 Command above will automatically install Docker on the host machine and run following containers to turn your cloud VM into Cloud IDE:
@@ -74,13 +74,13 @@ $HOME/vscode-home | /home/coder
 To install development packages above run command below on your VS Code terminal.
 
 ```sh
-curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --dev-utils
+curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --dev-utils
 ```
 
 If you prefer to install only one of these packages, such as Java, run command below:
 
 ```sh
-curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --jdk
+curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --jdk
 ```
 
 ## Accessing host machine
@@ -114,7 +114,7 @@ As an example, if your VM's public IP is `1.2.3.4` you can use following to map 
 
 ```sh
 export CODE_DOMAIN_NAME="$( curl -s https://api.ipify.org ).nip.io"
-curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --core
+curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
 ```
 
 Now your VS Code should be available at `https://vscode-1-2-3-4.nip.io`.
