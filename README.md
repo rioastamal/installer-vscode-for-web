@@ -2,7 +2,7 @@
 
 Turn your fresh cloud VM into fully functional VS Code for the web with HTTPS enabled.
 
-[![VS Code for the web](https://github.com/rioastamal/installer-vscode-for-web/assets/469847/a1b52a3a-6dd7-4b6a-a754-3071fb662ac5)](https://github.com/rioastamal/installer-vscode-for-web/assets/469847/60a3fe97-3296-479a-a772-4c0649ff794b)
+[![VS Code for the web](https://github-production-user-asset-6210df.s3.amazonaws.com/469847/275779903-a1b52a3a-6dd7-4b6a-a754-3071fb662ac5.jpg)](https://github-production-user-asset-6210df.s3.amazonaws.com/469847/275777169-60a3fe97-3296-479a-a772-4c0649ff794b.png)
 
 ### Pre installation
 
