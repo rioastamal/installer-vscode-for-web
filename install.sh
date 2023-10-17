@@ -65,7 +65,7 @@ package_manager() {
   # Modern CentOS based with dnf and yum
   ( [ $( type -t dnf ) ] && [ $( type -t yum ) ] ) && sudo dnf "$@"
   
-  # Older CentOS based with dnf and yum
+  # Older CentOS based with only yum
   ( [ ! $( type -t dnf ) ] && [ $( type -t yum ) ] ) && sudo yum "$@"
   
   [ $( type -t dpkg ) ] && sudo apt "$@"
@@ -329,7 +329,7 @@ while [ $# -gt 0 ]; do
       dashed_printlog "Updating %s system packages...\n" "$( detect_os )"
       package_manager update -y
       
-      dashed_printlog "Installing VS Code for web browser...\n"
+      dashed_printlog "Installing VS Code for web browser (%s)...\n" "$( detect_os )"
       install_docker
       
       sudo systemctl enable --now docker && sleep 3
@@ -351,25 +351,25 @@ while [ $# -gt 0 ]; do
     --dev-utils)
       exit_if_not_docker
       
-      dashed_printlog "Installing nvm for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing nvm (%s)...\n" "$( detect_os )"
       install_nvm
       
-      dashed_printlog "Installing Python PIP 3 for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Python PIP 3 (%s)...\n" "$( detect_os )"
       install_pip
       
-      dashed_printlog "Installing AWS CLI v2 for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing AWS CLI v2 (%s)...\n" "$( detect_os )"
       install_aws_cli
       
-      dashed_printlog "Installing Terraform for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Terraform (%s)...\n" "$( detect_os )"
       install_terraform
       
-      dashed_printlog "Installing Java Development Kit (JDK) for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Java Development Kit (JDK) (%s)...\n" "$( detect_os )"
       install_jdk
       
-      dashed_printlog "Installing Golang for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Golang (%s)...\n" "$( detect_os )"
       install_go
       
-      dashed_printlog "Installing GCC (build-essential) for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing GCC (build-essential) (%s)...\n" "$( detect_os )"
       install_gcc
       
       dashed_printlog "Installing Bun (Javascript/TypeScript runtime) %s...\n" "$( detect_os )"
@@ -381,37 +381,37 @@ while [ $# -gt 0 ]; do
     
     --terraform)
       exit_if_not_docker
-      dashed_printlog "Installing Terraform for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Terraform (%s)...\n" "$( detect_os )"
       install_terraform
     ;;
     
     --awscli)
       exit_if_not_docker
-      dashed_printlog "Installing AWS CLI v2 for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing AWS CLI v2 (%s)...\n" "$( detect_os )"
       install_aws_cli
     ;;
     
     --pip3)
       exit_if_not_docker
-      dashed_printlog "Installing Python PIP 3 for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Python PIP 3 (%s)...\n" "$( detect_os )"
       install_pip
     ;;
     
     --jdk)
       exit_if_not_docker
-      dashed_printlog "Installing Java Development Kit (JDK) for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Java Development Kit (JDK) (%s)...\n" "$( detect_os )"
       install_jdk
     ;;
     
     --go)
       exit_if_not_docker
-      dashed_printlog "Installing Golang for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing Golang (%s)...\n" "$( detect_os )"
       install_go
     ;;
     
     --gcc)
       exit_if_not_docker
-      dashed_printlog "Installing GCC (build-essential) for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing GCC (build-essential) (%s)...\n" "$( detect_os )"
       install_gcc
     ;;
     
@@ -423,7 +423,7 @@ while [ $# -gt 0 ]; do
 
     --nvm)
       exit_if_not_docker
-      dashed_printlog "Installing nvm for %s...\n" "$( detect_os )"
+      dashed_printlog "Installing nvm (%s)...\n" "$( detect_os )"
       install_nvm
     ;;
     
