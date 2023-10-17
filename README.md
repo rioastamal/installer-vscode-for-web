@@ -117,7 +117,7 @@ export CODE_DOMAIN_NAME="$( curl -s https://api.ipify.org ).nip.io"
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
 ```
 
-Now your VS Code should be available at `https://vscode-1-2-3-4.nip.io`.
+Now your VS Code should be available at `https://1.2.3.4.nip.io`.
 
 > **Important**: I recommend using your own domain name for real-world use cases. Use free DNS mapping services like these for testing purposes only.
 
