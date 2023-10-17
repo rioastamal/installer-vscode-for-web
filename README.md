@@ -12,7 +12,7 @@ Command above will automatically install Docker on the host machine and run foll
 - [code-server](https://github.com/coder/code-server)
 - [Caddy](https://caddyserver.com/)
 
-Once the installation is complete you can access your VS Code via an HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `$HOME/.config/code-server/config.yaml`.
+Once the installation is complete you can access your VS Code via HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `$HOME/.config/code-server/config.yaml`.
 
 Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration.
 
@@ -100,16 +100,16 @@ cmd-host
 
 If you do not have domain name for testing, you can use free DNS service mapping like [nip.io](https://nip.io) which can map your VM's public IP address into domain name.
 
-As an example, if your VM's public IP is `1.2.3.4` you can use following to map domain `vscode-1-2-3-4.nip.io` to your public IP.
+As an example, if your VM's public IP is `1.2.3.4` you can use following to map domain `1.2.3.4.nip.io` to your public IP.
 
 ```sh
-export CODE_DOMAIN_NAME=vscode-1-2-3-4.nip.io
+export CODE_DOMAIN_NAME="$( curl -s https://api.ipify.org ).nip.io"
 curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --core
 ```
 
 Now your VS Code should be available at `https://vscode-1-2-3-4.nip.io`.
 
-> **Important**: I recommend to use your own domain name for real use case. Only use those free DNS mapping service for testing purpose only.
+> **Important**: I recommend using your own domain name for real-world use cases. Use free DNS mapping services like these for testing purposes only.
 
 ## Contributing
 
