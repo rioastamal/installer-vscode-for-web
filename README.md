@@ -2,6 +2,12 @@
 
 Turn your fresh cloud VM into fully functional VS Code for the web with HTTPS enabled.
 
+[![VS Code for the web](https://github.com/rioastamal/installer-vscode-for-web/assets/469847/a1b52a3a-6dd7-4b6a-a754-3071fb662ac5)](https://github.com/rioastamal/installer-vscode-for-web/assets/469847/60a3fe97-3296-479a-a772-4c0649ff794b)
+
+### Pre installation
+
+Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration.
+
 ```sh
 export CODE_DOMAIN_NAME=vscode.example.com
 curl -s -L https://raw.githubusercontent.com/installer-vscode-for-web/main/install.sh | bash -s -- --core
@@ -14,7 +20,11 @@ Command above will automatically install Docker on the host machine and run foll
 
 Once the installation is complete you can access your VS Code via HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `$HOME/.config/code-server/config.yaml`.
 
-Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration.
+### Post installation
+
+Make sure to run `source $HOME/.bashrc` to apply all the changes for current shell.
+
+### Table of contents
 
 - [Supported Linux distributions](#supported-linux-distributions)
 - [Development packages](#development-packages)
@@ -59,7 +69,7 @@ All your development activities should take place inside the `code-server` conta
 
 Host directory | Mounted to
 ---------------|-----------
-$HOME/.local | /home/coder/vscode-home
+$HOME/vscode-home | /home/coder
 
 To install development packages above run command below on your VS Code terminal.
 
