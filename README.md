@@ -8,6 +8,8 @@ Turn your fresh cloud VM into fully functional VS Code for the web with HTTPS en
 
 Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration.
 
+### Installation
+
 ```sh
 export CODE_DOMAIN_NAME=vscode.example.com
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
@@ -20,9 +22,9 @@ Command above will automatically install Docker on the host machine and run foll
 
 Once the installation is complete you can access your VS Code via HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `$HOME/.config/code-server/config.yaml`.
 
-### Post installation
-
-Make sure to run `source $HOME/.bashrc` to apply all the changes for current shell.
+```sh
+cat $HOME/.config/code-server/config.yaml
+```
 
 ### Table of contents
 
@@ -82,6 +84,8 @@ If you prefer to install only one of these packages, such as Java, run command b
 ```sh
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --jdk
 ```
+
+Make sure to run `source $HOME/.bashrc` to apply all the changes for current shell.
 
 ## Accessing host machine
 
