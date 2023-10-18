@@ -4,7 +4,7 @@ CODE_SERVER_DOCKER_NAME="code-server"
 CODE_SERVER_IMAGE="codercom/code-server"
 [ -z "$CODE_SERVER_VERSION" ] && CODE_SERVER_VERSION="bullseye"
 
-CADDY_SERVER_DOCKER_NAME="caddy"
+CADDY_SERVER_DOCKER_NAME="caddy-server"
 CADDY_SERVER_IMAGE="caddy"
 [ -z "$CADDY_SERVER_VERSION" ] && CADDY_SERVER_VERSION="2.7.5"
 
@@ -19,6 +19,32 @@ detect_os() {
   grep 'VERSION_CODENAME=bookworm' /etc/os-release >/dev/null && echo 'debian_12'
   grep 'VERSION_CODENAME=bullseye' /etc/os-release >/dev/null && echo 'debian_11'
   grep 'VERSION_CODENAME=buster' /etc/os-release >/dev/null && echo 'debian_10'
+}
+
+detect_strong_password() {
+  local PASSWORD="$1"
+  
+  [ $( printf "$PASSWORD" | wc -c ) -lt 12 ] && {
+    printf "Error: Password is less than 12 characters.\n" >&2
+    return 1 
+  }
+  
+  [ $( printf "$PASSWORD" | grep '[0-9]' ) ] || {
+    printf "Error: Password must contains a digit.\n" >&2
+    return 2
+  }
+  
+  [ $( printf "$PASSWORD" | grep '[a-z]' ) ] || {
+    printf "Error: Password must contains a lower case letter.\n" >&2
+    return 2
+  }
+  
+  [ $( printf "$PASSWORD" | grep '[A-Z]' ) ] || {
+    printf "Error: Password must contains a upper case letter.\n" >&2
+    return 2
+  }
+
+  return 0
 }
 
 get_cpu_arch() {
@@ -177,13 +203,13 @@ install_jdk() {
   curl -L -s -q -o /tmp/jdk.tar.gz "$JDK_URL"
   rm -rf $HOME/.local/jdk 2>/dev/null
   tar xvf /tmp/jdk.tar.gz -C $HOME/.local/
-  mv $HOME/.local/jdk-$JDK_VERSION $HOME/.local/jdk
+  mv $HOME/.local/jdk-${JDK_VERSION}* $HOME/.local/jdk
   rm /tmp/jdk.tar.gz
   
   grep 'JAVA_HOME=' $HOME/.bashrc >/dev/null 2>&1 || {
     printf "
 JAVA_HOME=$HOME/.local/jdk
-export PATH=$PATH:\$JAVA_HOME/bin\n" >> $HOME/.bashrc
+export PATH=\$JAVA_HOME/bin:\$PATH\n" >> $HOME/.bashrc
   }
   
   # Ensure next call for $PATH has newest value
@@ -196,6 +222,11 @@ export PATH=$PATH:\$JAVA_HOME/bin\n" >> $HOME/.bashrc
 }
 
 install_serverless_framework() {
+  # Make sure we got npm installed
+  [ -d $HOME/.local/nvm ] || install_nvm
+  source $HOME/.local/nvm/nvm.sh
+  rm -rf "$( dirname $NVM_BIN )/lib/node_modules/serverless" 2>/dev/null
+  
   npm install -g serverless
 }
 
@@ -210,7 +241,7 @@ install_go() {
   grep 'GO_HOME=' $HOME/.bashrc >/dev/null 2>&1 || {
     printf "
 GO_HOME=$HOME/.local/go
-export PATH=$PATH:\$GO_HOME/bin\n" >> $HOME/.bashrc
+export PATH=\$GO_HOME/bin:\$PATH\n" >> $HOME/.bashrc
   }
   
   # Ensure next call for $PATH has newest value
@@ -252,18 +283,31 @@ $CODE_DOMAIN_NAME {
 }
 EOF
   
-  sudo docker stop caddy-server && sudo docker rm caddy-server
-  sudo docker run -it --name caddy-server -p 80:80 -p 443:443 \
+  sudo docker stop $CADDY_SERVER_DOCKER_NAME && sudo docker rm $CADDY_SERVER_DOCKER_NAME
+  sudo docker run -it --name $CADDY_SERVER_DOCKER_NAME -p 80:80 -p 443:443 \
     -v "$HOME/.local/caddy:/data" \
     -v "$HOME/.config/caddy/Caddyfile:/etc/caddy/Caddyfile" \
     -u "$(id -u):$(id -g)" \
     -e "DOCKER_USER=$USER" \
     --restart unless-stopped \
-    -d caddy:latest
+    -d $CADDY_SERVER_IMAGE:$CADDY_SERVER_VERSION
 }
 
 install_vscode_docker() {
   mkdir -p $HOME/vscode-home/project
+  mkdir -p $HOME/vscode-home/.config/code-server
+  
+  [ -f "$HOME/vscode-home/.config/code-server/config.yaml" ] || {
+    [ ! -z "$CODE_PASSWORD" ] && {
+      dashed_printlog "Setting up password...\n"
+      
+      printf "bind-addr: 127.0.0.1:8080
+auth: password
+password: $CODE_PASSWORD
+cert: false
+" > $HOME/vscode-home/.config/code-server/config.yaml
+    }
+  }
   
   sudo docker stop $CODE_SERVER_DOCKER_NAME && sudo docker rm $CODE_SERVER_DOCKER_NAME
   sudo docker run -it --name $CODE_SERVER_DOCKER_NAME -p 8080:8080 \
@@ -312,6 +356,11 @@ exit_if_not_docker() {
   }
 }
 
+exit_if_password_not_strong() {
+  [ -z "$CODE_PASSWORD" ] && return 0
+  detect_strong_password "$CODE_PASSWORD" || exit 1
+}
+
 # Parse the arguments
 while [ $# -gt 0 ]; do
   case $1 in
@@ -323,8 +372,9 @@ while [ $# -gt 0 ]; do
         exit 4
       }
       
-      dashed_printlog "Checking domain name...\n"
+      dashed_printlog "Preparing installation...\n"
       init_code_domain
+      exit_if_password_not_strong
       
       dashed_printlog "Updating %s system packages...\n" "$( detect_os )"
       package_manager update -y
