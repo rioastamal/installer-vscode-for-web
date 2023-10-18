@@ -19,6 +19,7 @@ detect_os() {
   grep 'VERSION_CODENAME=bookworm' /etc/os-release >/dev/null && echo 'debian_12'
   grep 'VERSION_CODENAME=bullseye' /etc/os-release >/dev/null && echo 'debian_11'
   grep 'VERSION_CODENAME=buster' /etc/os-release >/dev/null && echo 'debian_10'
+  grep 'PLATFORM_ID="platform:el9"' /etc/os-release >/dev/null && echo 'rhel_9'
 }
 
 detect_strong_password() {
@@ -158,6 +159,7 @@ install_docker() {
   [ "$( detect_os )" = "debian_10" ] && install_docker_debian
   [ "$( detect_os )" = "centos_9" ] && install_docker_centos
   [ "$( detect_os )" = "centos_7" ] && install_docker_centos
+  [ "$( detect_os )" = "rhel_9" ] && install_docker_centos
   [ "$( detect_os )" = "amazon_linux_2023" ] && install_docker_amazon_linux
   [ "$( detect_os )" = "amazon_linux_2" ] && install_docker_amazon_linux
 }
@@ -194,6 +196,8 @@ install_terraform() {
   
   sudo rm /usr/local/bin/terraform 2>/dev/null 
   sudo ln -s /home/coder/.local/bin/terraform /usr/local/bin/terraform
+  
+  code-server --install-extension hashicorp.terraform
 }
 
 install_jdk() {
@@ -283,7 +287,8 @@ $CODE_DOMAIN_NAME {
 }
 EOF
   
-  sudo docker stop $CADDY_SERVER_DOCKER_NAME && sudo docker rm $CADDY_SERVER_DOCKER_NAME
+  sudo docker stop $CADDY_SERVER_DOCKER_NAME
+  sudo docker rm $CADDY_SERVER_DOCKER_NAME
   sudo docker run -it --name $CADDY_SERVER_DOCKER_NAME -p 80:80 -p 443:443 \
     -v "$HOME/.local/caddy:/data" \
     -v "$HOME/.config/caddy/Caddyfile:/etc/caddy/Caddyfile" \
@@ -309,7 +314,8 @@ cert: false
     }
   }
   
-  sudo docker stop $CODE_SERVER_DOCKER_NAME && sudo docker rm $CODE_SERVER_DOCKER_NAME
+  sudo docker stop $CODE_SERVER_DOCKER_NAME
+  sudo docker rm $CODE_SERVER_DOCKER_NAME
   sudo docker run -it --name $CODE_SERVER_DOCKER_NAME -p 8080:8080 \
     -v "$HOME/vscode-home:/home/coder" \
     -u "$(id -u):$(id -g)" \
@@ -342,9 +348,15 @@ sudo ln -s /usr/local/bin/ssh-host /usr/local/bin/cmd-host
 echo 'ssh-host docker' '"\$@"' | sudo tee /usr/local/bin/docker-host
 sudo chmod +x /usr/local/bin/docker-host
 
+sudo ln -fs "$( which code-server )" /usr/local/bin/code
+
 sudo apt update -y
 sudo apt install -y git unzip
 EOF
+}
+
+exec_code_server_docker() {
+  sudo docker exec -i $CODE_SERVER_DOCKER_NAME "$@"
 }
 
 exit_if_not_docker() {
@@ -390,7 +402,7 @@ while [ $# -gt 0 ]; do
       
       dashed_printlog "Caddy reverse proxy is ready\n"
       printf "You can access VS Code at the following URL: 
-%s\n" "https://$CODE_DOMAIN_NAME"
+%s\n" "https://$CODE_DOMAIN_NAME/?folder=/home/coder/project"
 
       printf "\nPlease wait for couple of minutes before accessing the website, the TLS certificate creation may take a while.\n"
 
