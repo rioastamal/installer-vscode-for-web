@@ -12,6 +12,7 @@ detect_os() {
   grep 'PRETTY_NAME="Amazon Linux 2"' /etc/os-release >/dev/null && echo 'amazon_linux_2'
   grep 'PRETTY_NAME="Amazon Linux 2023"' /etc/os-release >/dev/null && echo 'amazon_linux_2023'
   grep 'PRETTY_NAME="CentOS Stream 9"' /etc/os-release >/dev/null && echo 'centos_9'
+  grep 'PRETTY_NAME="CentOS Stream 8"' /etc/os-release >/dev/null && echo 'centos_8'
   grep 'PRETTY_NAME="CentOS Linux 7 (Core)"' /etc/os-release >/dev/null && echo 'centos_7'
   grep 'VERSION_CODENAME=jammy' /etc/os-release >/dev/null && echo 'ubuntu_22_04'
   grep 'VERSION_CODENAME=focal' /etc/os-release >/dev/null && echo 'ubuntu_20_04'
@@ -158,6 +159,7 @@ install_docker() {
   [ "$( detect_os )" = "debian_11" ] && install_docker_debian
   [ "$( detect_os )" = "debian_10" ] && install_docker_debian
   [ "$( detect_os )" = "centos_9" ] && install_docker_centos
+  [ "$( detect_os )" = "centos_8" ] && install_docker_centos
   [ "$( detect_os )" = "centos_7" ] && install_docker_centos
   [ "$( detect_os )" = "rhel_9" ] && install_docker_centos
   [ "$( detect_os )" = "amazon_linux_2023" ] && install_docker_amazon_linux
@@ -320,6 +322,7 @@ cert: false
     -v "$HOME/vscode-home:/home/coder" \
     -u "$(id -u):$(id -g)" \
     -e "DOCKER_USER=$USER" \
+    -e "HOME=/home/coder" \
     --restart unless-stopped \
     -d $CODE_SERVER_IMAGE:$CODE_SERVER_VERSION
     
