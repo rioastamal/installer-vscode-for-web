@@ -56,6 +56,7 @@ Supported Linux distributions:
 - Debian 12
 - Debian 11
 - Debian 10
+- RHEL 9
 - Ubuntu 22.04 LTS
 - Ubuntu 20.04 LTS
 - Ubuntu 18.04 LTS
