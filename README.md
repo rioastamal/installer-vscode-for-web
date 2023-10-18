@@ -52,6 +52,7 @@ Supported Linux distributions:
 - Amazon Linux 2023
 - Amazon Linux 2
 - CentOS Stream 9 
+- CentOS Stream 8
 - CentOS 7
 - Debian 12
 - Debian 11
