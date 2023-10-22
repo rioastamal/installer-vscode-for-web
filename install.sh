@@ -1,26 +1,35 @@
 #!/bin/bash
 
-CODE_SERVER_DOCKER_NAME="code-server"
-CODE_SERVER_IMAGE="codercom/code-server"
-[ -z "$CODE_SERVER_VERSION" ] && CODE_SERVER_VERSION="bullseye"
-
-CADDY_SERVER_DOCKER_NAME="caddy-server"
-CADDY_SERVER_IMAGE="caddy"
-[ -z "$CADDY_SERVER_VERSION" ] && CADDY_SERVER_VERSION="2.7.5"
+OS_PACKAGE_HAS_BEEN_UPDATED='no'
 
 detect_os() {
-  grep 'PRETTY_NAME="Amazon Linux 2"' /etc/os-release >/dev/null && echo 'amazon_linux_2'
-  grep 'PRETTY_NAME="Amazon Linux 2023"' /etc/os-release >/dev/null && echo 'amazon_linux_2023'
-  grep 'PRETTY_NAME="CentOS Stream 9"' /etc/os-release >/dev/null && echo 'centos_9'
-  grep 'PRETTY_NAME="CentOS Stream 8"' /etc/os-release >/dev/null && echo 'centos_8'
-  grep 'PRETTY_NAME="CentOS Linux 7 (Core)"' /etc/os-release >/dev/null && echo 'centos_7'
-  grep 'VERSION_CODENAME=jammy' /etc/os-release >/dev/null && echo 'ubuntu_22_04'
-  grep 'VERSION_CODENAME=focal' /etc/os-release >/dev/null && echo 'ubuntu_20_04'
-  grep 'VERSION_CODENAME=bionic' /etc/os-release >/dev/null && echo 'ubuntu_18_04'
-  grep 'VERSION_CODENAME=bookworm' /etc/os-release >/dev/null && echo 'debian_12'
-  grep 'VERSION_CODENAME=bullseye' /etc/os-release >/dev/null && echo 'debian_11'
-  grep 'VERSION_CODENAME=buster' /etc/os-release >/dev/null && echo 'debian_10'
-  grep 'PLATFORM_ID="platform:el9"' /etc/os-release >/dev/null && echo 'rhel_9'
+  [ ! -z "$EMULATE_OS_VERSION" ] && printf "%s" "$EMULATE_OS_VERSION" && return 0
+  grep 'PRETTY_NAME="Amazon Linux 2023"' /etc/os-release >/dev/null && printf 'amazon_linux_2023' && return 0
+  grep 'PRETTY_NAME="CentOS Stream 9"' /etc/os-release >/dev/null && printf 'centos_9' && return 0
+  grep 'PRETTY_NAME="CentOS Stream 8"' /etc/os-release >/dev/null && printf 'centos_8' && return 0
+  grep 'VERSION_CODENAME=jammy' /etc/os-release >/dev/null && printf 'ubuntu_22_04' && return 0
+  grep 'VERSION_CODENAME=focal' /etc/os-release >/dev/null && printf 'ubuntu_20_04' && return 0
+  grep 'VERSION_CODENAME=bookworm' /etc/os-release >/dev/null && printf 'debian_12' && return 0
+  grep 'VERSION_CODENAME=bullseye' /etc/os-release >/dev/null && printf 'debian_11' && return 0
+  grep 'VERSION_CODENAME=buster' /etc/os-release >/dev/null && printf 'debian_10' && return 0
+  grep 'PLATFORM_ID="platform:el9"' /etc/os-release >/dev/null && printf 'rhel_9' && return 0
+  
+  printf 'unknown' && return 1
+}
+
+is_debian_based() {
+  detect_os | grep 'debian_' && return 0
+  detect_os | grep 'ubuntu_' && return 0
+  
+  return 1
+}
+
+is_rpm_based() {
+  detect_os | grep 'centos_' && return 0
+  detect_os | grep 'rhel_' && return 0
+  detect_os | grep 'amazon_linux_' && return 0
+  
+  return 1
 }
 
 detect_strong_password() {
@@ -49,6 +58,11 @@ detect_strong_password() {
   return 0
 }
 
+is_selinux_enabled() {
+  [ "$( sestatus | grep 'SELinux status' | awk '{print $3}' )" = "enabled" ] && return 0
+  return 1
+}
+
 get_cpu_arch() {
   uname -a | awk '{ print $(NF-1) }'
 }
@@ -64,6 +78,28 @@ dashed_printlog() {
   repeat_chars '-'
 }
 
+_init() {
+    [ -f /.dockerenv ] && {
+      dashed_printlog "Error: Running inside Docker detected\n" >&2
+      printf "Please run --core option from host machine.\n" >&2
+      
+      exit 4
+    }
+    
+    dashed_printlog "Preparing installation...\n"
+    [ "$( detect_os )" = "unknown" ] && {
+      printf "Error: Unsupported OS, please see supported OS at: %s\n" \
+      "https://github.com/rioastamal/installer-vscode-for-web"
+      exit 400
+    }
+    
+    init_code_domain
+    exit_if_password_not_strong
+
+    type -t tar >/dev/null || package_manager install -y tar
+    type -t python3 > /dev/null || package_manager install -y python3
+}
+
 init_code_domain() {
   [ -z "$CODE_DOMAIN_NAME" ] && {
     printf "Error: Missing CODE_DOMAIN_NAME env.
@@ -75,6 +111,11 @@ export CODE_DOMAIN_NAME=\"vscode.example.com\"\n"
   }
   
   printf "Using domain name $CODE_DOMAIN_NAME\n"
+}
+
+update_os_package() {
+  [ "$OS_PACKAGE_HAS_BEEN_UPDATED" = "no" ] && package_manager update -y
+  OS_PACKAGE_HAS_BEEN_UPDATED='yes'
 }
 
 repeat_chars() {
@@ -102,7 +143,7 @@ package_manager() {
 install_docker_debian() {
   local OS_NAME="$1"
   [ -z "$OS_NAME" ] && OS_NAME="debian"
-  sudo apt-get update
+  update_os_package
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq ca-certificates curl gnupg
   sudo install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/$OS_NAME/gpg | sudo gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -124,6 +165,7 @@ install_docker_ubuntu() {
 }
 
 install_docker_centos() {
+  update_os_package
   package_manager install -y yum-utils
   sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
   package_manager install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin unzip
@@ -132,6 +174,7 @@ install_docker_centos() {
 }
 
 install_docker_amazon_linux() {
+  update_os_package
   package_manager install -y docker unzip
   sudo systemctl enable --now docker
   install_docker_compose_amazon_linux
@@ -179,13 +222,19 @@ install_nvm() {
 }
 
 install_pip() {
-  sudo apt install -y python3-distutils
-  curl -s -o /tmp/get-pip.py 'https://bootstrap.pypa.io/get-pip.py'
+  detect_os | grep 'debian_' && sudo apt install -y python3-distutils
+  detect_os | grep 'ubuntu_' && sudo apt install -y python3-distutils
+  
+  PYTHON_VER="$( python3 --version|sed 's/\.//g' | awk '{print $2}' | sed 's/\.//g' )"
+  PIP_URL="https://bootstrap.pypa.io/get-pip.py"
+  [ $PYTHON_VER -lt 370 ] && PIP_URL="https://bootstrap.pypa.io/pip/3.6/get-pip.py"
+
+  curl -s -o /tmp/get-pip.py "$PIP_URL"
   python3 /tmp/get-pip.py
   
   sudo rm /usr/local/bin/pip3 2>/dev/null
-  sudo ln -s /home/coder/.local/bin/pip3 /usr/local/bin/pip3
-  sudo ln -s /home/coder/.local/bin/pip /usr/local/bin/pip
+  sudo ln -sf $HOME/.local/bin/pip3 /usr/local/bin/pip3
+  sudo ln -sf $HOME/.local/bin/pip /usr/local/bin/pip
 }
 
 install_terraform() {
@@ -197,7 +246,7 @@ install_terraform() {
   rm -rf /tmp/terraform.zip
   
   sudo rm /usr/local/bin/terraform 2>/dev/null 
-  sudo ln -s /home/coder/.local/bin/terraform /usr/local/bin/terraform
+  sudo ln -sf $HOME/.local/bin/terraform /usr/local/bin/terraform
   
   code-server --install-extension hashicorp.terraform
 }
@@ -223,8 +272,8 @@ export PATH=\$JAVA_HOME/bin:\$PATH\n" >> $HOME/.bashrc
   export PATH=$PATH:$JAVA_HOME/bin
   
   sudo rm /usr/local/bin/java /usr/local/bin/javac 2>/dev/null
-  sudo ln -s $HOME/.local/jdk/bin/java /usr/local/bin/java
-  sudo ln -s $HOME/.local/jdk/bin/javac /usr/local/bin/javac
+  sudo ln -sf $HOME/.local/jdk/bin/java /usr/local/bin/java
+  sudo ln -sf $HOME/.local/jdk/bin/javac /usr/local/bin/javac
 }
 
 install_serverless_framework() {
@@ -255,8 +304,8 @@ export PATH=\$GO_HOME/bin:\$PATH\n" >> $HOME/.bashrc
   export PATH=$PATH:$GO_HOME/bin
   
   sudo rm /usr/local/bin/go /usr/local/bin/gofmt 2>/dev/null
-  sudo ln -s $HOME/.local/go/bin/go /usr/local/bin/go
-  sudo ln -s $HOME/.local/go/bin/gofmt /usr/local/bin/gofmt
+  sudo ln -sf $HOME/.local/go/bin/go /usr/local/bin/go
+  sudo ln -sf $HOME/.local/go/bin/gofmt /usr/local/bin/gofmt
 }
 
 install_aws_cli() {
@@ -268,11 +317,13 @@ install_aws_cli() {
   rm -rf /tmp/aws /tmp/awsv2.zip
   
   sudo rm /usr/local/bin/aws 2>/dev/null
-  sudo ln -s /home/coder/.local/bin/aws /usr/local/bin/aws
+  sudo ln -sf $HOME/.local/bin/aws /usr/local/bin/aws
 }
 
 install_gcc() {
-  sudo apt install -y build-essential
+  update_os_package
+  is_debian_based && package_manager install -y build-essential
+  is_rpm_based && package_manager groupinstall -y "Development Tools"
 }
 
 install_bunjs() {
@@ -280,95 +331,116 @@ install_bunjs() {
   curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 }
 
-install_caddy_docker() {
-  mkdir -p $HOME/.local/caddy $HOME/.config/caddy
+install_caddy() {
+  [ -z "$CADDY_VERSION" ] && CADDY_VERSION="2.7.5"
+  [ "$( get_cpu_arch )" = "x86_64" ] && CADDY_URL="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.tar.gz"
+  [ "$( get_cpu_arch )" = "aarch64" ] && CADDY_URL="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_arm64.tar.gz"
   
-  cat <<EOF > $HOME/.config/caddy/Caddyfile
+  type -t sestatus >/dev/null || package_manager install -y policycoreutils
+
+  local CADDY_HOME=/home/caddy
+  sudo mkdir -p $CADDY_HOME
+  
+  sudo groupadd --system caddy
+  sudo useradd --system \
+    --gid caddy \
+    --no-create-home \
+    --home-dir $CADDY_HOME \
+    --shell /usr/sbin/nologin \
+    --comment "Caddy web server" \
+    caddy
+  
+  sudo chmod 0755 $CADDY_HOME
+  sudo chown caddy:caddy $CADDY_HOME
+  sudo -u caddy mkdir -p $CADDY_HOME/.local/caddy $CADDY_HOME/.config/caddy
+  
+  sudo -u caddy curl -L -s -o /tmp/caddy.tar.gz "$CADDY_URL"
+  sudo -u caddy tar zxvf /tmp/caddy.tar.gz -C $CADDY_HOME/.local/caddy/
+  
+  sudo ln -fs $CADDY_HOME/.local/caddy/caddy /usr/local/bin/caddy
+
+cat <<SYSTEMD | sudo tee /etc/systemd/system/caddy.service
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/local/bin/caddy run --environ --config $CADDY_HOME/.config/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config $CADDY_HOME/.config/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+SYSTEMD
+
+cat <<CADDY_FILE | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile
 $CODE_DOMAIN_NAME {
-	reverse_proxy 172.17.0.1:8080
+  reverse_proxy 127.0.0.1:8080
 }
-EOF
-  
-  sudo docker stop $CADDY_SERVER_DOCKER_NAME
-  sudo docker rm $CADDY_SERVER_DOCKER_NAME
-  sudo docker run -it --name $CADDY_SERVER_DOCKER_NAME -p 80:80 -p 443:443 \
-    -v "$HOME/.local/caddy:/data" \
-    -v "$HOME/.config/caddy/Caddyfile:/etc/caddy/Caddyfile" \
-    -u "$(id -u):$(id -g)" \
-    -e "DOCKER_USER=$USER" \
-    --restart unless-stopped \
-    -d $CADDY_SERVER_IMAGE:$CADDY_SERVER_VERSION
+CADDY_FILE
+
+  is_selinux_enabled && {
+    package_manager install -y policycoreutils-python-utils
+    sudo semanage fcontext -a -t bin_t $CADDY_HOME/.local/caddy/caddy
+    sudo restorecon -Rv $CADDY_HOME/.local/caddy/caddy
+  }
+  sudo systemctl stop caddy 2>/dev/null
+  sudo systemctl enable --now caddy
 }
 
-install_vscode_docker() {
-  mkdir -p $HOME/vscode-home/project
-  mkdir -p $HOME/vscode-home/.config/code-server
+install_vscode() {
+  local VSCODE_USER=vscode
+  local VSCODE_HOME=/home/$VSCODE_USER
   
-  [ -f "$HOME/vscode-home/.config/code-server/config.yaml" ] || {
+  sudo mkdir -p $VSCODE_HOME
+  
+  sudo groupadd $VSCODE_USER
+  sudo useradd \
+    --gid $VSCODE_USER \
+    --no-create-home \
+    --home-dir $VSCODE_HOME \
+    --shell /bin/bash \
+    --comment "VS Code User" \
+    $VSCODE_USER
+  
+  sudo chown $VSCODE_USER:$VSCODE_USER $VSCODE_HOME
+  sudo -u $VSCODE_USER mkdir -p $VSCODE_HOME/.config/code-server
+  
+  [ -f "$VSCODE_HOME/.bashrc" ] || {
+    sudo -u $VSCODE_USER cp -r /etc/skel/. /home/$VSCODE_USER
+  }
+  
+  [ -f "$VSCODE_HOME/.config/code-server/config.yaml" ] || {
     [ ! -z "$CODE_PASSWORD" ] && {
-      dashed_printlog "Setting up password...\n"
+      printlog "Setting up password for VS Code...\n"
       
       printf "bind-addr: 127.0.0.1:8080
 auth: password
 password: $CODE_PASSWORD
 cert: false
-" > $HOME/vscode-home/.config/code-server/config.yaml
+" | sudo -u $VSCODE_USER tee $VSCODE_HOME/.config/code-server/config.yaml > /dev/null
     }
   }
   
-  sudo docker stop $CODE_SERVER_DOCKER_NAME
-  sudo docker rm $CODE_SERVER_DOCKER_NAME
-  sudo docker run -it --name $CODE_SERVER_DOCKER_NAME -p 8080:8080 \
-    -v "$HOME/vscode-home:/home/coder" \
-    -u "$(id -u):$(id -g)" \
-    -e "DOCKER_USER=$USER" \
-    -e "HOME=/home/coder" \
-    --restart unless-stopped \
-    -d $CODE_SERVER_IMAGE:$CODE_SERVER_VERSION
-    
-    configure_post_docker_installation
-}
-
-configure_post_docker_installation() {
-  rm $HOME/.ssh/docker-ssh.key 2>/dev/null
-  rm $HOME/.ssh/docker-ssh.key.pub 2>/dev/null
-  ssh-keygen -t rsa -b 2048 -N "" -f $HOME/.ssh/docker-ssh.key
-  cat $HOME/.ssh/docker-ssh.key.pub >> $HOME/.ssh/authorized_keys
-  cat <<EOF | sudo docker exec -i $CODE_SERVER_DOCKER_NAME bash -
-[ ! -f /home/coder/.bashrc ] && cp -r /etc/skel/. /home/coder
-
-mkdir /home/coder/.ssh 
-chmod 0700 /home/coder/.ssh
-
-echo "$( cat $HOME/.ssh/docker-ssh.key )" > /home/coder/.ssh/docker-ssh.key
-chmod 0600 /home/coder/.ssh/docker-ssh.key
-
-echo 'ssh -o StrictHostKeyChecking=no -o LogLevel=error -o UserKnownHostsFile=/dev/null -i /home/coder/.ssh/docker-ssh.key' $USER@172.17.0.1 '"\$@"' | sudo tee /usr/local/bin/ssh-host
-sudo chmod +x /usr/local/bin/ssh-host
-sudo ln -s /usr/local/bin/ssh-host /usr/local/bin/exec-host
-sudo ln -s /usr/local/bin/ssh-host /usr/local/bin/cmd-host
-
-echo 'ssh-host docker' '"\$@"' | sudo tee /usr/local/bin/docker-host
-sudo chmod +x /usr/local/bin/docker-host
-
-sudo ln -fs "$( which code-server )" /usr/local/bin/code
-
-sudo apt update -y
-sudo apt install -y git unzip
-EOF
-}
-
-exec_code_server_docker() {
-  sudo docker exec -i $CODE_SERVER_DOCKER_NAME "$@"
-}
-
-exit_if_not_docker() {
-  [ ! -f /.dockerenv ] && {
-    dashed_printlog "Error: Running inside host machine detected.\n" >&2
-    printf "Please run this option from VS Code container.\n" >&2
-    
-    exit 4
+  sudo -u $VSCODE_USER chmod 0600 $VSCODE_HOME/.config/code-server/config.yaml
+  sudo ls /etc/sudoers.d/99-vscode-user >/dev/null 2>&1 || {
+    printf "%s ALL=(ALL) NOPASSWD:ALL\n" "$VSCODE_USER" | sudo tee /etc/sudoers.d/99-vscode-user
   }
+
+  curl -fsSL https://code-server.dev/install.sh | sh
+  
+  sudo systemctl stop code-server@$VSCODE_USER
+  sudo systemctl enable --now code-server@$VSCODE_USER
 }
 
 exit_if_password_not_strong() {
@@ -379,42 +451,41 @@ exit_if_password_not_strong() {
 # Parse the arguments
 while [ $# -gt 0 ]; do
   case $1 in
+    --caddy)
+      dashed_printlog "Installing Caddy server (%s)...\n" "$( detect_os )"
+      install_caddy
+    ;;
+    
+    --vscode)
+      dashed_printlog "Installing VS Code server (%s)...\n" "$( detect_os )"
+      install_vscode
+    ;;
+
     --core)
-      [ -f /.dockerenv ] && {
-        dashed_printlog "Error: Running inside Docker detected\n" >&2
-        printf "Please run --core option from host machine.\n" >&2
-        
-        exit 4
-      }
-      
-      dashed_printlog "Preparing installation...\n"
-      init_code_domain
-      exit_if_password_not_strong
+      _init
       
       dashed_printlog "Updating %s system packages...\n" "$( detect_os )"
-      package_manager update -y
+      update_os_package
       
-      dashed_printlog "Installing VS Code for web browser (%s)...\n" "$( detect_os )"
-      install_docker
+      dashed_printlog "Installing Caddy server (%s)...\n" "$( detect_os )"
+      install_caddy
       
-      sudo systemctl enable --now docker && sleep 3
-      
-      install_vscode_docker
-      install_caddy_docker
-      # install_caddy
+      dashed_printlog "Installing VS Code server (%s)...\n" "$( detect_os )"
+      install_vscode
       
       dashed_printlog "Caddy reverse proxy is ready\n"
       printf "You can access VS Code at the following URL: 
-%s\n" "https://$CODE_DOMAIN_NAME/?folder=/home/coder/project"
+%s\n" "https://$CODE_DOMAIN_NAME"
 
       printf "\nPlease wait for couple of minutes before accessing the website, the TLS certificate creation may take a while.\n"
 
       dashed_printlog "VS Code password\n"
-      printf "Password are stored at $HOME/vscode-home/.config/code-server/config.yaml\n"
+      printf "Password are stored at /home/vscode/.config/code-server/config.yaml\n"
     ;;
     
     --dev-utils)
-      exit_if_not_docker
+      dashed_printlog "Installing Docker (%s)...\n" "$( detect_os )"
+      install_docker
       
       dashed_printlog "Installing nvm (%s)...\n" "$( detect_os )"
       install_nvm
@@ -444,56 +515,52 @@ while [ $# -gt 0 ]; do
       install_serverless_framework
     ;;
     
+    --docker)
+      dashed_printlog "Installing Docker (%s)...\n" "$( detect_os )"
+      install_docker
+    ;;
+    
     --terraform)
-      exit_if_not_docker
       dashed_printlog "Installing Terraform (%s)...\n" "$( detect_os )"
       install_terraform
     ;;
     
     --awscli)
-      exit_if_not_docker
       dashed_printlog "Installing AWS CLI v2 (%s)...\n" "$( detect_os )"
       install_aws_cli
     ;;
     
     --pip3)
-      exit_if_not_docker
       dashed_printlog "Installing Python PIP 3 (%s)...\n" "$( detect_os )"
       install_pip
     ;;
     
     --jdk)
-      exit_if_not_docker
       dashed_printlog "Installing Java Development Kit (JDK) (%s)...\n" "$( detect_os )"
       install_jdk
     ;;
     
     --go)
-      exit_if_not_docker
       dashed_printlog "Installing Golang (%s)...\n" "$( detect_os )"
       install_go
     ;;
     
     --gcc)
-      exit_if_not_docker
       dashed_printlog "Installing GCC (build-essential) (%s)...\n" "$( detect_os )"
       install_gcc
     ;;
     
     --bunjs)
-      exit_if_not_docker
       dashed_printlog "Installing Bun (Javascript/TypeScript runtime) %s...\n" "$( detect_os )"
       install_bunjs
     ;;
 
     --nvm)
-      exit_if_not_docker
       dashed_printlog "Installing nvm (%s)...\n" "$( detect_os )"
       install_nvm
     ;;
     
     --sls)
-      exit_if_not_docker
       dashed_printlog "Installing Serverless Framework %s...\n" "$( detect_os )"
       install_serverless_framework
     ;;

@@ -6,16 +6,22 @@ Turn your fresh cloud VM into fully functional VS Code for the web with HTTPS en
 
 ### Pre installation
 
-Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration.
+Before running the installation commands make sure to allow inbound connections on port 80 (HTTP) and 443 (HTTPS) via your cloud virtual firewal configuration and your OS level firewall.
 
 ### Installation
 
 ```sh
 export CODE_DOMAIN_NAME=vscode.example.com
+export CODE_PASSWORD=MyVeryLongPassword123
+```
+
+The `CODE_PASSWORD` environment variable is optional. If you omit it, a random password will be generated.
+
+```sh
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
 ```
 
-Command above will automatically install Docker on the host machine and run following containers to turn your cloud VM into Cloud IDE:
+Command above will automatically install and configure following software packages to turn your cloud VM into Cloud IDE:
 
 - [code-server](https://github.com/coder/code-server)
 - [Caddy](https://caddyserver.com/)
@@ -26,19 +32,10 @@ Once the installation is complete you can access your VS Code via HTTPS URL, e.g
 cat $HOME/.config/code-server/config.yaml
 ```
 
-If you want to provide a password upon installation, set the value of `CODE_PASSWORD` environment variable.
-
-```sh
-export CODE_DOMAIN_NAME=vscode.example.com
-export CODE_PASSWORD=MyVeryLongPassword123
-curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --core
-```
-
 ### Table of contents
 
 - [Supported Linux distributions](#supported-linux-distributions)
 - [Development packages](#development-packages)
-- [Accessing host machine](#accessing-host-machine)
 - [Domain name for testing](#domain-name-for-testing)
 - [How to change the password?](#how-to-change-the-password)
 - [Changelog](#changelog)
@@ -49,19 +46,22 @@ curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web
 
 Supported Linux distributions:
 
+- AlmaLinux 9
 - Amazon Linux 2023
-- Amazon Linux 2
 - CentOS Stream 9 
 - CentOS Stream 8
-- CentOS 7
 - Debian 12
 - Debian 11
 - Debian 10
 - RHEL 9
+- RockyLinux 9
 - Ubuntu 22.04 LTS
 - Ubuntu 20.04 LTS
-- Ubuntu 18.04 LTS
-- More to come...
+
+The list of supported Linux distributions can be expanded by emulating the OS version via the `EMULATE_OS_VERSION` environment variable. You should set this environment variable before running the installation script.
+
+- AlmaLinux 8 (use `export EMULATE_OS_VERSION=centos_8`)
+- RockyLinux 8 (use `export EMULATE_OS_VERSION=centos_8`)
 
 ## Development packages
 
@@ -72,7 +72,7 @@ Package | CLI option
 All packages | `--dev-utils`
 AWS CLI v2 | `--awscli`
 Bun (Javascript/TypeScript runtime) | `--bunjs`
-Docker (via host machine) | via host machine
+Docker | `--docker`
 Git | Automatically installed
 Go | `--go`
 Java (JDK) | `--jdk`
@@ -82,13 +82,11 @@ pip | `--pip3`
 Terraform | `--terraform`
 Serverless Framework | `--sls`
 
-All your development activities should take place inside the `code-server` container, with your host directory mounted to the container:
-
-Host directory | Mounted to
----------------|-----------
-$HOME/vscode-home | /home/coder
+All your development activities on VS Code should take place inside the `/home/vscode` directory.
 
 To install development packages above on your VS Code terminal, run the installer command with the `--dev-utils` option.
+
+> **Note**: If you're emulating OS version, don't forget to set `EMULATE_OS_VERSION` before running the command.
 
 ```sh
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --dev-utils
@@ -100,29 +98,11 @@ If you prefer to install only one of these packages, such as Java, run command b
 curl -s -L https://raw.githubusercontent.com/rioastamal/installer-vscode-for-web/main/install.sh | bash -s -- --jdk
 ```
 
-Make sure to run `source $HOME/.bashrc` to apply all the changes for current shell.
-
-## Accessing host machine
-
-We have provided a handy command that allows you to run commands on the host machine from the VS Code terminal with ease. The script is called `cmd-host`.
+Make sure to run these commands to apply all the changes to the current shell without having to log out:
 
 ```sh
-cmd-host docker ps
-```
-
-Command above will execute `docker ps` on the host machine via SSH. If you need to pass multi-line commands, you can also use STDIN.
-
-```
-cat <<EOF | cmd-host bash
-uname -a
-sudo systemctl list-unit-files | grep enabled
-EOF
-```
-
-If you want to log in into your host machine via SSH, do not provide any commands or arguments.
-
-```sh
-cmd-host
+source $HOME/.bashrc
+newgrp docker
 ```
 
 ## Domain name for testing
@@ -142,7 +122,7 @@ Now your VS Code should be available at `https://1.2.3.4.nip.io`.
 
 ## How to change the password?
 
-To change your VS Code password, on the host machine edit a config file located at `$HOME/vscode-home/.config/code-server/config.yaml`.
+To change your VS Code password, on the host machine edit a config file located at `$HOME/.config/code-server/config.yaml`.
 
 ```
 bind-addr: 127.0.0.1:8080
@@ -158,6 +138,13 @@ sudo docker restart code-server
 ```
 
 ## Changelog
+
+#### v1.1 (2023-10-23)
+
+- Ability to emulate OS version via `EMULATE_OS_VERSION`
+- A dedicated user `vscode`, is used for running VS Code.
+- Remove docker dependencies for running code-server and Caddy. VS Code terminal now run natively on host machine.
+- Remove Amazon Linux 2, CentOS 7, and Ubuntu 18.04 from the list of supported Linux distributions due to GLIBC version compatibility issues.
 
 #### v1.0 (2023-10-18)
 
