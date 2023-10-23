@@ -26,10 +26,10 @@ Command above will automatically install and configure following software packag
 - [code-server](https://github.com/coder/code-server)
 - [Caddy](https://caddyserver.com/)
 
-Once the installation is complete you can access your VS Code via HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `$HOME/.config/code-server/config.yaml` on host machine.
+Once the installation is complete you can access your VS Code via HTTPS URL, e.g: `https://vscode.example.com`. To view the password, you can check `home/vscode/.config/code-server/config.yaml` on host machine.
 
 ```sh
-cat $HOME/.config/code-server/config.yaml
+cat /home/vscode/.config/code-server/config.yaml
 ```
 
 ### Table of contents
@@ -122,7 +122,7 @@ Now your VS Code should be available at `https://1.2.3.4.nip.io`.
 
 ## How to change the password?
 
-To change your VS Code password, on the host machine edit a config file located at `$HOME/.config/code-server/config.yaml`.
+To change your VS Code password, edit a config file located at `/home/vscode/.config/code-server/config.yaml`.
 
 ```
 bind-addr: 127.0.0.1:8080
@@ -131,10 +131,10 @@ password: YOUR_NEW_PASSWORD_HERE
 cert: false
 ```
 
-Save the file and restart the container.
+Save the file and restart the code-server.
 
 ```
-sudo docker restart code-server
+sudo systemctl restart code-server@vscode
 ```
 
 ## Changelog
