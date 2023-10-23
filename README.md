@@ -38,6 +38,7 @@ cat /home/vscode/.config/code-server/config.yaml
 - [Development packages](#development-packages)
 - [Domain name for testing](#domain-name-for-testing)
 - [How to change the password?](#how-to-change-the-password)
+- [Roadmap](#roadmap)
 - [Changelog](#changelog)
 - [Contributing](#contributing)
 - [License](#license)
@@ -136,6 +137,13 @@ Save the file and restart the code-server.
 ```
 sudo systemctl restart code-server@vscode
 ```
+
+## Roadmap
+
+Roadmap for future version:
+
+- [ ] GitHub authentication to access VS Code
+- [ ] Access local USB device from the VM
 
 ## Changelog
 
