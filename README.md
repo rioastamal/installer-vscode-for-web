@@ -147,6 +147,10 @@ Roadmap for future version:
 
 ## Changelog
 
+#### v1.1.1 (2023-10-26)
+
+- Bug fix: Unable to install code-server when $HOME variable is not present
+
 #### v1.1 (2023-10-23)
 
 - Ability to emulate OS version via `EMULATE_OS_VERSION`
