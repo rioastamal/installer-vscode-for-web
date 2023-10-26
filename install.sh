@@ -95,6 +95,8 @@ _init() {
     
     init_code_domain
     exit_if_password_not_strong
+    
+    [ -z "$HOME" ] && export HOME="$( getent passwd "$(whoami)" | awk -F':' '{print $6}' )"
 
     type -t tar >/dev/null || package_manager install -y tar
     type -t python3 > /dev/null || package_manager install -y python3
@@ -137,7 +139,7 @@ package_manager() {
   # Older CentOS based with only yum
   ( [ ! $( type -t dnf ) ] && [ $( type -t yum ) ] ) && sudo yum "$@"
   
-  [ $( type -t dpkg ) ] && sudo apt "$@"
+  [ $( type -t dpkg ) ] && sudo DEBIAN_FRONTEND=noninteractive apt "$@"
 }
 
 install_docker_debian() {
