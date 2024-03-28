@@ -147,6 +147,10 @@ Roadmap for future version:
 
 ## Changelog
 
+#### v1.1.2 (2024-03-28)
+
+- Bug fix: Failed to detect OS version
+
 #### v1.1.1 (2023-10-26)
 
 - Bug fix: Unable to install code-server when $HOME variable is not present
