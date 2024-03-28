@@ -4,9 +4,9 @@ OS_PACKAGE_HAS_BEEN_UPDATED='no'
 
 detect_os() {
   [ ! -z "$EMULATE_OS_VERSION" ] && printf "%s" "$EMULATE_OS_VERSION" && return 0
-  grep 'PRETTY_NAME="Amazon Linux 2023"' /etc/os-release >/dev/null && printf 'amazon_linux_2023' && return 0
-  grep 'PRETTY_NAME="CentOS Stream 9"' /etc/os-release >/dev/null && printf 'centos_9' && return 0
-  grep 'PRETTY_NAME="CentOS Stream 8"' /etc/os-release >/dev/null && printf 'centos_8' && return 0
+  grep 'PRETTY_NAME="Amazon Linux 2023' /etc/os-release >/dev/null && printf 'amazon_linux_2023' && return 0
+  grep 'PRETTY_NAME="CentOS Stream 9' /etc/os-release >/dev/null && printf 'centos_9' && return 0
+  grep 'PRETTY_NAME="CentOS Stream 8' /etc/os-release >/dev/null && printf 'centos_8' && return 0
   grep 'VERSION_CODENAME=jammy' /etc/os-release >/dev/null && printf 'ubuntu_22_04' && return 0
   grep 'VERSION_CODENAME=focal' /etc/os-release >/dev/null && printf 'ubuntu_20_04' && return 0
   grep 'VERSION_CODENAME=bookworm' /etc/os-release >/dev/null && printf 'debian_12' && return 0
