@@ -56,6 +56,7 @@ Supported Linux distributions:
 - Debian 10
 - RHEL 9
 - RockyLinux 9
+- Ubuntu 24.04 LTS
 - Ubuntu 22.04 LTS
 - Ubuntu 20.04 LTS
 
