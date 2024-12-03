@@ -198,6 +198,7 @@ install_non_root_docker_user() {
 }
 
 install_docker() {
+  [ "$( detect_os )" = "ubuntu_24_04" ] && install_docker_ubuntu
   [ "$( detect_os )" = "ubuntu_22_04" ] && install_docker_ubuntu
   [ "$( detect_os )" = "ubuntu_20_04" ] && install_docker_ubuntu
   [ "$( detect_os )" = "ubuntu_18_04" ] && install_docker_ubuntu
