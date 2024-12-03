@@ -335,9 +335,10 @@ install_bunjs() {
 }
 
 install_caddy() {
-  [ -z "$CADDY_VERSION" ] && CADDY_VERSION="2.7.5"
-  [ "$( get_cpu_arch )" = "x86_64" ] && CADDY_URL="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.tar.gz"
-  [ "$( get_cpu_arch )" = "aarch64" ] && CADDY_URL="https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_arm64.tar.gz"
+  # Download pre-built Caddy binary compiled with caddy-security plugin from github.com/rioastamal/caddy-plus-security
+  [ -z "$CADDY_VERSION" ] && CADDY_VERSION="2.8.4"
+  [ "$( get_cpu_arch )" = "x86_64" ] && CADDY_URL="https://github.com/rioastamal/caddy-plus-security/releases/download/v${CADDY_VERSION}/caddy-v${CADDY_VERSION}-linux-amd64"
+  [ "$( get_cpu_arch )" = "aarch64" ] && CADDY_URL="https://github.com/rioastamal/caddy-plus-security/releases/download/v${CADDY_VERSION}/caddy-v${CADDY_VERSION}-linux-arm64"
   
   type -t sestatus >/dev/null || package_manager install -y policycoreutils
 
@@ -355,12 +356,13 @@ install_caddy() {
   
   sudo chmod 0755 $CADDY_HOME
   sudo chown caddy:caddy $CADDY_HOME
-  sudo -u caddy mkdir -p $CADDY_HOME/.local/caddy $CADDY_HOME/.config/caddy
+  sudo -u caddy mkdir -p $CADDY_HOME/.local/caddy/bin $CADDY_HOME/.config/caddy
   
-  sudo -u caddy curl -L -s -o /tmp/caddy.tar.gz "$CADDY_URL"
-  sudo -u caddy tar zxvf /tmp/caddy.tar.gz -C $CADDY_HOME/.local/caddy/
+  sudo -u caddy curl -L -s -o $CADDY_HOME/.local/caddy/bin/caddy "$CADDY_URL"
+  sudo -u caddy chmod +x $CADDY_HOME/.local/caddy/bin/caddy
+  # sudo -u caddy tar zxvf /tmp/caddy.tar.gz -C $CADDY_HOME/.local/caddy/
   
-  sudo ln -fs $CADDY_HOME/.local/caddy/caddy /usr/local/bin/caddy
+  sudo ln -fs $CADDY_HOME/.local/caddy/bin/caddy /usr/local/bin/caddy
 
 cat <<SYSTEMD | sudo tee /etc/systemd/system/caddy.service
 [Unit]
@@ -394,8 +396,8 @@ CADDY_FILE
 
   is_selinux_enabled && {
     package_manager install -y policycoreutils-python-utils
-    sudo semanage fcontext -a -t bin_t $CADDY_HOME/.local/caddy/caddy
-    sudo restorecon -Rv $CADDY_HOME/.local/caddy/caddy
+    sudo semanage fcontext -a -t bin_t $CADDY_HOME/.local/caddy/bin/caddy
+    sudo restorecon -Rv $CADDY_HOME/.local/caddy/bin/caddy
   }
   sudo systemctl stop caddy 2>/dev/null
   sudo systemctl enable --now caddy
