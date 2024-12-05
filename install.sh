@@ -101,6 +101,7 @@ _init() {
 
     type -t tar >/dev/null || package_manager install -y tar
     type -t python3 > /dev/null || package_manager install -y python3
+    type -t unzip > /dev/null || package_manager install -y unzip
 }
 
 init_code_domain() {
@@ -214,7 +215,7 @@ install_docker() {
 }
 
 install_nvm() {
-  [ -z "$NVM_VERSION" ] && NVM_VERSION=0.39.5
+  [ -z "$NVM_VERSION" ] && NVM_VERSION=0.40.1
   [ -z "$NVM_DIR" ] && NVM_DIR="$HOME/.local/nvm"
   
   mkdir -p $NVM_DIR
@@ -242,7 +243,7 @@ install_pip() {
 }
 
 install_terraform() {
-  [ -z "$TERRAFORM_VERSION" ] && TERRAFORM_VERSION=1.6.1
+  [ -z "$TERRAFORM_VERSION" ] && TERRAFORM_VERSION=1.10.1
   [ "$( get_cpu_arch )" = "x86_64" ] && TERRAFORM_URL="https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
   [ "$( get_cpu_arch )" = "aarch64" ] && TERRAFORM_URL="https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_arm64.zip"
   curl -s -q -o /tmp/terraform.zip "$TERRAFORM_URL"
@@ -290,7 +291,7 @@ install_serverless_framework() {
 }
 
 install_go() {
-  [ -z "$GO_VERSION" ] && GO_VERSION=1.21.3
+  [ -z "$GO_VERSION" ] && GO_VERSION=1.23.4
   [ "$( get_cpu_arch )" = "x86_64" ] && GO_URL="https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
   [ "$( get_cpu_arch )" = "aarch64" ] && GO_URL="https://go.dev/dl/go${GO_VERSION}.linux-arm64.tar.gz"
   curl -L -s -q -o /tmp/go.tar.gz "$GO_URL"
@@ -331,7 +332,7 @@ install_gcc() {
 }
 
 install_bunjs() {
-  [ -z "$BUN_VERSION" ] && BUN_VERSION=1.0.6
+  [ -z "$BUN_VERSION" ] && BUN_VERSION=1.1.38
   curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 }
 
