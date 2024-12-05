@@ -1,6 +1,7 @@
 #!/bin/bash
 
 OS_PACKAGE_HAS_BEEN_UPDATED='no'
+INSTALLER_VERSION='1.2'
 
 detect_os() {
   [ ! -z "$EMULATE_OS_VERSION" ] && printf "%s" "$EMULATE_OS_VERSION" && return 0
@@ -722,7 +723,7 @@ Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for c
     ;;
 
     --version)
-      printf "version %s\n" "1.0"
+      printf "version %s\n" "$INSTALLER_VERSION"
       exit 0
     ;;
 
