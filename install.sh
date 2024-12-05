@@ -226,22 +226,6 @@ install_nvm() {
   nvm use --lts
 }
 
-install_pip() {
-  detect_os | grep 'debian_' && sudo apt install -y python3-distutils
-  detect_os | grep 'ubuntu_' && sudo apt install -y python3-distutils
-  
-  PYTHON_VER="$( python3 --version|sed 's/\.//g' | awk '{print $2}' | sed 's/\.//g' )"
-  PIP_URL="https://bootstrap.pypa.io/get-pip.py"
-  [ $PYTHON_VER -lt 370 ] && PIP_URL="https://bootstrap.pypa.io/pip/3.6/get-pip.py"
-
-  curl -s -o /tmp/get-pip.py "$PIP_URL"
-  python3 /tmp/get-pip.py
-  
-  sudo rm /usr/local/bin/pip3 2>/dev/null
-  sudo ln -sf $HOME/.local/bin/pip3 /usr/local/bin/pip3
-  sudo ln -sf $HOME/.local/bin/pip /usr/local/bin/pip
-}
-
 install_miniconda() {
   curl -s -o /tmp/Miniconda3-latest-Linux-x86_64.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
   bash /tmp/Miniconda3-latest-Linux-x86_64.sh -b -u -p $HOME/.local/miniconda
@@ -662,9 +646,6 @@ Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for c
       dashed_printlog "Installing nvm (%s)...\n" "$( detect_os )"
       install_nvm
       
-      dashed_printlog "Installing Python PIP 3 (%s)...\n" "$( detect_os )"
-      install_pip
-      
       dashed_printlog "Installing AWS CLI v2 (%s)...\n" "$( detect_os )"
       install_aws_cli
       
@@ -703,11 +684,6 @@ Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for c
     --awscli)
       dashed_printlog "Installing AWS CLI v2 (%s)...\n" "$( detect_os )"
       install_aws_cli
-    ;;
-    
-    --pip3)
-      dashed_printlog "Installing Python PIP 3 (%s)...\n" "$( detect_os )"
-      install_pip
     ;;
     
     --jdk)
