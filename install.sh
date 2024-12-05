@@ -242,6 +242,12 @@ install_pip() {
   sudo ln -sf $HOME/.local/bin/pip /usr/local/bin/pip
 }
 
+install_miniconda() {
+  curl -s -o /tmp/Miniconda3-latest-Linux-x86_64.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  bash /tmp/Miniconda3-latest-Linux-x86_64.sh -b -u -p $HOME/.local/miniconda
+  $HOME/.local/miniconda/bin/conda init
+}
+
 install_terraform() {
   [ -z "$TERRAFORM_VERSION" ] && TERRAFORM_VERSION=1.10.1
   [ "$( get_cpu_arch )" = "x86_64" ] && TERRAFORM_URL="https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
@@ -679,6 +685,9 @@ Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for c
       
       dashed_printlog "Installing Serverless Framework %s...\n" "$( detect_os )"
       install_serverless_framework
+
+      dashed_printlog "Installing Miniconda %s...\n" "$( detect_os )"
+      install_miniconda
     ;;
     
     --docker)
@@ -729,6 +738,11 @@ Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for c
     --sls)
       dashed_printlog "Installing Serverless Framework %s...\n" "$( detect_os )"
       install_serverless_framework
+    ;;
+
+    --miniconda)
+      dashed_printlog "Installing Miniconda %s...\n" "$( detect_os )"
+      install_miniconda
     ;;
 
     --version)
