@@ -355,17 +355,16 @@ install_caddy() {
     --comment "Caddy web server" \
     caddy
   
-  sudo chmod 0755 $CADDY_HOME
+  sudo chmod 0700 $CADDY_HOME
   sudo chown caddy:caddy $CADDY_HOME
   sudo -u caddy mkdir -p $CADDY_HOME/.local/caddy/bin $CADDY_HOME/.config/caddy
   
   sudo -u caddy curl -L -s -o $CADDY_HOME/.local/caddy/bin/caddy "$CADDY_URL"
   sudo -u caddy chmod +x $CADDY_HOME/.local/caddy/bin/caddy
-  # sudo -u caddy tar zxvf /tmp/caddy.tar.gz -C $CADDY_HOME/.local/caddy/
   
   sudo ln -fs $CADDY_HOME/.local/caddy/bin/caddy /usr/local/bin/caddy
 
-cat <<SYSTEMD | sudo tee /etc/systemd/system/caddy.service
+  cat <<SYSTEMD | sudo tee /etc/systemd/system/caddy.service
 [Unit]
 Description=Caddy
 Documentation=https://caddyserver.com/docs/
@@ -376,7 +375,7 @@ Requires=network-online.target
 Type=notify
 User=caddy
 Group=caddy
-ExecStart=/usr/local/bin/caddy run --environ --config $CADDY_HOME/.config/caddy/Caddyfile
+ExecStart=/usr/local/bin/caddy run --config $CADDY_HOME/.config/caddy/Caddyfile --envfile $CADDY_HOME/.config/caddy/Caddyfile.env
 ExecReload=/usr/local/bin/caddy reload --config $CADDY_HOME/.config/caddy/Caddyfile --force
 TimeoutStopSec=5s
 LimitNOFILE=1048576
@@ -389,11 +388,139 @@ AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 SYSTEMD
 
-cat <<CADDY_FILE | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile
+  # Caddy config file oauth2 authentication (Google and GitHub)
+  sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile.oauth2 ] && {
+    cat <<CADDY_FILE_OAUTH2 | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile.oauth2
+{
+  order authenticate before respond
+  order authorize before basicauth
+
+  security {
+    import oauth2/providers/google.conf
+    import oauth2/providers/github.conf
+
+    authentication portal vscode_portal {
+      crypto default token lifetime 7200
+      crypto key sign-verify {\$CRYPTO_KEY}
+      import oauth2/providers/enabled.conf
+      cookie domain .${CODE_DOMAIN_NAME}
+      ui {
+        links {
+          "Visual Studio Code" "/" icon "las la-code"
+        }
+      }
+
+      import oauth2/users/google.conf
+      import oauth2/users/github.conf
+    }
+
+    authorization policy vscode_policy {
+      set auth url https://$CODE_DOMAIN_NAME/__/login
+      crypto key verify {\$CRYPTO_KEY}
+      allow roles authp/admin authp/user
+      validate bearer header
+      inject headers with claims
+    }
+  }
+}
+
+$CODE_DOMAIN_NAME {
+  handle /__/* {
+    authenticate with vscode_portal
+  }
+
+  handle {
+    authorize with vscode_policy
+    reverse_proxy 127.0.0.1:8080
+  }
+}
+CADDY_FILE_OAUTH2
+  }
+
+  # Add oauth2 related configuration
+  sudo -u caddy mkdir -p $CADDY_HOME/.config/caddy/oauth2/providers
+  sudo -u caddy mkdir -p $CADDY_HOME/.config/caddy/oauth2/users
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/oauth2/providers/google.conf ] && {
+    cat <<'GOOGLE_OAUTH2' | sudo -u caddy tee $CADDY_HOME/.config/caddy/oauth2/providers/google.conf
+oauth identity provider google {
+  realm google
+  driver google
+  client_id {$GOOGLE_CLIENT_ID}
+  client_secret {$GOOGLE_CLIENT_SECRET}
+  scopes openid email profile
+}
+GOOGLE_OAUTH2
+  }
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/oauth2/providers/github.conf ] && {
+    printf "oauth identity provider github {\$GITHUB_CLIENT_ID} {\$GITHUB_CLIENT_SECRET}\n" | \
+    sudo tee $CADDY_HOME/.config/caddy/oauth2/providers/github.conf
+  }
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/oauth2/providers/enabled.conf ] && {
+    cat <<'ENABLED_PROVIDERS' | sudo -u caddy tee $CADDY_HOME/.config/caddy/oauth2/providers/enabled.conf
+# Use a comment to disable the provider.
+enable identity provider google
+enable identity provider github
+ENABLED_PROVIDERS
+  }
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/oauth2/users/google.conf ] && {
+    cat <<'GOOGLE_USER' | sudo -u caddy tee $CADDY_HOME/.config/caddy/oauth2/users/google.conf
+transform user {
+  match realm google
+  # Replace the email with yours
+  match email YOUR_EMAIL@gmail.com
+  action add role authp/user
+}
+GOOGLE_USER
+  }
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/oauth2/users/github.conf ] && {
+    cat <<'GITHUB_USER' | sudo -u caddy tee $CADDY_HOME/.config/caddy/oauth2/users/github.conf
+transform user {
+  match realm github
+  # Replace with your GitHub username
+  match sub github.com/YOUR_USERNAME
+  action add role authp/user
+}
+GITHUB_USER
+  }
+
+  sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile.env ] && {
+    local CRYPTO_KEY_VAL="$( head /dev/urandom | tr -dc A-Za-z0-9 | head -c 48 )"
+    cat <<CADDY_ENV | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile.env
+# Homepage URL -> https://$CODE_DOMAIN_NAME
+# Authorization callback URL -> https://$CODE_DOMAIN_NAME/__/oauth2/github/authorization-code-callback
+# See https://docs.authcrunch.com/docs/authenticate/oauth/backend-oauth2-0007-github
+GITHUB_CLIENT_ID=YOUR_GITHUB_CLIENT_ID
+GITHUB_CLIENT_SECRET=YOUR_GITHUB_CLIENT_SECRET
+
+# Authorized Javascript origins -> https://$CODE_DOMAIN_NAME
+# Authorized redirect URIs -> https://$CODE_DOMAIN_NAME/__/oauth2/google/authorization-code-callback
+# See https://docs.authcrunch.com/docs/authenticate/oauth/backend-oauth2-0002-google
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
+
+CRYPTO_KEY=$CRYPTO_KEY_VAL
+CADDY_ENV
+  }
+
+  # Caddy config file with password enabled. This file will be used when oauth2 
+  # authentication is not enabled
+  sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile.passwd ] && {
+    cat <<CADDY_FILE | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile.passwd
 $CODE_DOMAIN_NAME {
   reverse_proxy 127.0.0.1:8080
 }
 CADDY_FILE
+  }
+
+  # Symlink the default Caddyfile to Caddyfile.passwd
+  sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile ] && {
+    sudo -u caddy ln -fs $CADDY_HOME/.config/caddy/Caddyfile.passwd $CADDY_HOME/.config/caddy/Caddyfile
+  }
 
   is_selinux_enabled && {
     package_manager install -y policycoreutils-python-utils
@@ -420,13 +547,14 @@ install_vscode() {
     $VSCODE_USER
   
   sudo chown $VSCODE_USER:$VSCODE_USER $VSCODE_HOME
+  sudo chmod 0700 $VSCODE_HOME
   sudo -u $VSCODE_USER mkdir -p $VSCODE_HOME/.config/code-server
   
   [ -f "$VSCODE_HOME/.bashrc" ] || {
     sudo -u $VSCODE_USER cp -r /etc/skel/. /home/$VSCODE_USER
   }
   
-  [ -f "$VSCODE_HOME/.config/code-server/config.yaml" ] || {
+  sudo [ -f "$VSCODE_HOME/.config/code-server/config.yaml" ] || {
     [ ! -z "$CODE_PASSWORD" ] && {
       printlog "Setting up password for VS Code...\n"
       
@@ -434,6 +562,12 @@ install_vscode() {
 auth: password
 password: $CODE_PASSWORD
 cert: false
+
+# Use following config if you want to disable code-server password
+# and prefer OAuth2 authentication using Google or GitHub.
+#
+#auth: none
+#password:
 " | sudo -u $VSCODE_USER tee $VSCODE_HOME/.config/code-server/config.yaml > /dev/null
     }
   }
@@ -486,7 +620,32 @@ while [ $# -gt 0 ]; do
       printf "\nPlease wait for couple of minutes before accessing the website, the TLS certificate creation may take a while.\n"
 
       dashed_printlog "VS Code password\n"
-      printf "Password are stored at /home/vscode/.config/code-server/config.yaml\n"
+      printf "Password are stored at /home/vscode/.config/code-server/config.yaml\n\n"
+
+      dashed_printlog "Authentication via Google or GitHub (OAuth2)\n"
+      printf "To activate, edit following files:
+
+/home/caddy/.config/caddy/Caddyfile.env
+/home/caddy/.config/caddy/oauth2/users/google.conf
+/home/caddy/.config/caddy/oauth2/users/github.conf
+
+Create symlink of /home/caddy/.config/caddy/Caddyfile, run following:
+
+    sudo -u caddy ln -fs /home/caddy/.config/caddy/Caddyfile.oauth2 /home/caddy/.config/caddy/Caddyfile
+
+Restart Caddy:
+
+    sudo systemctl restart caddy
+
+Now, you can optionally remove the password at /home/vscode/.config/code-server/config.yaml.
+
+    sudo systemctl restart code-server@vscode
+
+To logout from OAuth2 session go to:
+
+    https://$CODE_DOMAIN_NAME/__/logout
+
+Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for complete documentation.\n\n"
     ;;
     
     --dev-utils)
