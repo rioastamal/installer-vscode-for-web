@@ -38,6 +38,7 @@ cat /home/vscode/.config/code-server/config.yaml
 - [Development packages](#development-packages)
 - [Domain name for testing](#domain-name-for-testing)
 - [How to change the password?](#how-to-change-the-password)
+- [Login with Google and GitHub](#login-with-google-and-github)
 - [Roadmap](#roadmap)
 - [Changelog](#changelog)
 - [Contributing](#contributing)
@@ -80,9 +81,9 @@ Go | `--go`
 Java (JDK) | `--jdk`
 nvm | `--nvm`
 Node (via nvm) | Installed via `--nvm`
-pip | `--pip3`
 Terraform | `--terraform`
 Serverless Framework | `--sls`
+Miniconda | `--miniconda`
 
 All your development activities on VS Code should take place inside the `/home/vscode` directory.
 
@@ -139,14 +140,107 @@ Save the file and restart the code-server.
 sudo systemctl restart code-server@vscode
 ```
 
+## Login with Google and GitHub
+
+![Login via Google and GitHub](https://github.com/user-attachments/assets/b98d0e55-fdbd-459c-bc1e-537c938a6557)
+
+As of v1.2, the installer supports OAuth2 login via Google and GitHub. To activate:
+
+1. Create OAuth applications on Google and GitHub:
+   - [Setting up OAuth 2.0 on Google](https://support.google.com/cloud/answer/6158849?hl=en)
+     - Authorized JavaScript origins: `https://DOMAIN_NAME`
+     - Authorized redirect URIs: `https://DOMAIN_NAME/__/oauth2/google/authorization-code-callback`
+   - [Creating OAuth app on GitHub](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+     - Homepage URL: `https://DOMAIN_NAME`
+     - Authorization callback URL: `https://DOMAIN_NAME/__/oauth2/github/authorization-code-callback`
+
+2. Modify OAuth settings in `/home/caddy/.config/caddy/Caddyfile.env`:
+
+   ```sh
+   sudo -u caddy vim /home/caddy/.config/caddy/Caddyfile.env
+   ```
+
+3. Configure Google login:
+
+   ```sh
+   sudo -u caddy vim /home/caddy/.config/caddy/oauth2/users/google.conf
+   ```
+
+   Add authorized email addresses:
+
+   ```
+   transform user {
+     match realm google
+     # Replace the email with yours
+     match email example@gmail.com john@example.com
+     action add role authp/user
+   }
+   ```
+
+4. Configure GitHub login:
+
+   ```sh
+   sudo -u caddy vim /home/caddy/.config/caddy/oauth2/users/github.conf
+   ```
+
+   Add authorized GitHub usernames:
+
+   ```
+   transform user {
+     match realm github
+     # Replace with your GitHub username
+     match sub github.com/johndoe
+     action add role authp/user
+   }
+   ```
+
+5. Update Caddy configuration:
+
+   ```
+   sudo -u caddy ln -fs /home/caddy/.config/caddy/Caddyfile.oauth2 /home/caddy/.config/caddy/Caddyfile
+   ```
+
+6. Disable code-server password authentication:
+
+   ```sh
+   sudo -u vscode vim /home/vscode/.config/code-server/config.yaml
+   ```
+
+   Change the `auth` and remove the `password`.
+
+   ```
+   bind-addr: 127.0.0.1:8080
+   cert: false
+   auth: none
+   password:
+   ```
+
+7. Restart services
+
+   ```sh
+   sudo systemctl restart caddy
+   sudo systemctl restart code-server@vscode
+   ```
+
+To log out from OAuth2 session, visit: https://DOMAIN_NAME/__/logout
+
 ## Roadmap
 
 Roadmap for future version:
 
-- [ ] GitHub authentication to access VS Code
+- [x] ~~GitHub authentication to access VS Code~~
 - [ ] Access local USB device from the VM
 
 ## Changelog
+
+#### v1.2 (2024-12-06)
+
+- Implemented OAuth2 login with Google and GitHub
+- Removed install_pip
+- Added Miniconda as a new developer tool
+- Updated various developer tool packages to their latest versions
+- Replaced Caddy binary with one from github.com/rioastamal/caddy-plus-security
+- Added support for Ubuntu 24.04
 
 #### v1.1.2 (2024-03-28)
 
