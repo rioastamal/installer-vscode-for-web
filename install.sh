@@ -1,7 +1,7 @@
 #!/bin/bash
 
 OS_PACKAGE_HAS_BEEN_UPDATED='no'
-INSTALLER_VERSION='1.2'
+INSTALLER_VERSION='1.2.1'
 
 detect_os() {
   [ ! -z "$EMULATE_OS_VERSION" ] && printf "%s" "$EMULATE_OS_VERSION" && return 0
