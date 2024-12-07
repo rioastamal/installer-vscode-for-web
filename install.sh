@@ -123,6 +123,17 @@ update_os_package() {
   OS_PACKAGE_HAS_BEEN_UPDATED='yes'
 }
 
+get_caddy_protocol() {
+  [ -z "$CADDY_DISABLE_HTTPS" ] && CADDY_DISABLE_HTTPS='no'
+
+  [ "$CADDY_DISABLE_HTTPS" = "no" ] && {
+    printf "https://"
+    return 0
+  }
+
+  printf "http://"
+}
+
 repeat_chars() {
   local REPEAT=80
   [ ! -z "$2" ] && REPEAT=$2
@@ -382,6 +393,7 @@ SYSTEMD
 
   # Caddy config file oauth2 authentication (Google and GitHub)
   sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile.oauth2 ] && {
+    local CADDY_PROTOCOL="$( get_caddy_protocol )"
     cat <<CADDY_FILE_OAUTH2 | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile.oauth2
 {
   order authenticate before respond
@@ -407,7 +419,7 @@ SYSTEMD
     }
 
     authorization policy vscode_policy {
-      set auth url https://$CODE_DOMAIN_NAME/__/login
+      set auth url ${CADDY_PROTOCOL}$CODE_DOMAIN_NAME/__/login
       crypto key verify {\$CRYPTO_KEY}
       allow roles authp/admin authp/user
       validate bearer header
@@ -416,7 +428,7 @@ SYSTEMD
   }
 }
 
-$CODE_DOMAIN_NAME {
+${CADDY_PROTOCOL}$CODE_DOMAIN_NAME {
   handle /__/* {
     authenticate with vscode_portal
   }
@@ -503,7 +515,7 @@ CADDY_ENV
   # authentication is not enabled
   sudo [ ! -f $CADDY_HOME/.config/caddy/Caddyfile.passwd ] && {
     cat <<CADDY_FILE | sudo -u caddy tee $CADDY_HOME/.config/caddy/Caddyfile.passwd
-$CODE_DOMAIN_NAME {
+${CADDY_PROTOCOL}$CODE_DOMAIN_NAME {
   reverse_proxy 127.0.0.1:8080
 }
 CADDY_FILE
@@ -595,6 +607,7 @@ while [ $# -gt 0 ]; do
 
     --core)
       _init
+      CADDY_PROTOCOL="$( get_caddy_protocol )"
       
       dashed_printlog "Updating %s system packages...\n" "$( detect_os )"
       update_os_package
@@ -607,7 +620,7 @@ while [ $# -gt 0 ]; do
       
       dashed_printlog "Caddy reverse proxy is ready\n"
       printf "You can access VS Code at the following URL: 
-%s\n" "https://$CODE_DOMAIN_NAME"
+%s\n" "${CADDY_PROTOCOL}$CODE_DOMAIN_NAME"
 
       printf "\nPlease wait for couple of minutes before accessing the website, the TLS certificate creation may take a while.\n"
 
@@ -635,7 +648,7 @@ Now, you can optionally remove the password at /home/vscode/.config/code-server/
 
 To logout from OAuth2 session go to:
 
-    https://$CODE_DOMAIN_NAME/__/logout
+    ${CADDY_PROTOCOL}$CODE_DOMAIN_NAME/__/logout
 
 Visit https://github.com/rioastamal/installer-vscode-for-web/ project page for complete documentation.\n\n"
     ;;
