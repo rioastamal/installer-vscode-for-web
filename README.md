@@ -233,6 +233,12 @@ Roadmap for future version:
 
 ## Changelog
 
+#### v1.2.1 (2024-12-07)
+
+- Support for both HTTP and HTTPS now available; previously, only HTTPS was supported.
+
+Use `CADDY_DISABLE_HTTPS=yes` before running the installer.
+
 #### v1.2 (2024-12-06)
 
 - Implemented OAuth2 login with Google and GitHub
